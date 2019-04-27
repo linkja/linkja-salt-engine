@@ -19,16 +19,20 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class SaltEngine {
-  public final char SITE_FILE_DELIMITER = ',';
-  public final int SITE_FILE_COLUMN_COUNT = 3;
+  public static final char SITE_FILE_DELIMITER = ',';
+  public static final int SITE_FILE_COLUMN_COUNT = 3;
 
-  public final int MINIMUM_TOKEN_LENGTH = 13;
-  public final int MAXIMUM_TOKEN_LENGTH = 20;
+  public static final int MINIMUM_TOKEN_LENGTH = 13;
+  public static final int DEFAULT_TOKEN_LENGTH = MINIMUM_TOKEN_LENGTH;
+  public static final int MAXIMUM_TOKEN_LENGTH = 20;
 
   // Location of fields in the sites CSV file
-  public final int SITE_ID_INDEX = 0;
-  public final int SITE_NAME_INDEX = 1;
-  public final int SITE_KEY_FILE_INDEX = 2;
+  public static final int SITE_ID_INDEX = 0;
+  public static final int SITE_NAME_INDEX = 1;
+  public static final int SITE_KEY_FILE_INDEX = 2;
+
+  private static final String ALLOWED_TOKEN_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  private static final int NUM_ALLOWED_TOKEN_CHARACTERS = ALLOWED_TOKEN_CHARACTERS.length();
 
   private String projectName;
   private File sitesFile;
@@ -51,8 +55,12 @@ public class SaltEngine {
     return projectName;
   }
 
-  public void setProjectName(String projectName) {
-    this.projectName = projectName;
+  public void setProjectName(String projectName) throws LinkjaException {
+    if (projectName == null || projectName.trim().equals("")) {
+      throw new LinkjaException("You must set a project name that is at least 1 non-whitespace character long");
+    }
+
+    this.projectName = projectName.trim();
   }
 
   public File getSitesFile() {
@@ -92,36 +100,62 @@ public class SaltEngine {
   }
 
   public void generateSaltFile(Site site, String projectToken, Path outputPath) throws Exception {
-    PublicKey key = cryptoHelper.getRSAPublicKey(site.getPublicKeyFile());
     String hashFileContent = String.format("%s,%s,%s,%s,%s",
             site.getSiteID(), site.getSiteName(), generateToken(), projectToken, this.projectName);
-    String fileName = getSaltFileName(site.getSiteID());
+    String fileName = getSaltFileName(this.projectName, site.getSiteID());
     Files.write(Paths.get(outputPath.toString(), fileName).toAbsolutePath(),
             cryptoHelper.encryptRSA(hashFileContent.getBytes(), site.getPublicKeyFile()));
   }
 
-  public String getSaltFileName(String siteID) {
-    String fileName = String.format("%s_%s_%s.txt", this.projectName.replaceAll("[^\\w]", ""),
+  /**
+   * Helper function to generate a valid salt file name (removing invalid characters), given a project name
+   * and a site ID
+   * @param project
+   * @param siteID
+   * @return
+   * @throws LinkjaException
+   */
+  public String getSaltFileName(String project, String siteID) throws LinkjaException {
+    if (siteID == null || siteID.equals("")) {
+      throw new LinkjaException("The site ID cannot be empty");
+    }
+    if (project == null || project.equals("")) {
+      throw new LinkjaException("The project name cannot be empty");
+    }
+
+    String fileName = String.format("%s_%s_%s.txt", project.replaceAll("[^\\w]", ""),
             siteID.replaceAll("[^\\w]", ""),
             LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
     return fileName;
   }
 
+  /**
+   * Creates a random token string of the default length
+   * @return
+   * @throws LinkjaException
+   */
   public String generateToken() throws LinkjaException {
     return generateToken(MINIMUM_TOKEN_LENGTH);
   }
 
+  /**
+   * Creates a random token string of the specified length
+   * @param tokenLength
+   * @return
+   * @throws LinkjaException
+   */
   public String generateToken(int tokenLength) throws LinkjaException {
-    if (tokenLength < MINIMUM_TOKEN_LENGTH) {
+    if (tokenLength < MINIMUM_TOKEN_LENGTH || tokenLength > MAXIMUM_TOKEN_LENGTH) {
       throw new LinkjaException(String.format("The token must be between %d and %d characters, but %d were requested.",
               MINIMUM_TOKEN_LENGTH, MAXIMUM_TOKEN_LENGTH, tokenLength));
     }
+
     SecureRandom random = new SecureRandom();
-    byte bytes[] = new byte[tokenLength];
-    random.nextBytes(bytes);
-    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-    String token = encoder.encodeToString(bytes);
-    return token;
+    char token[] = new char[tokenLength];
+    for (int index = 0; index < tokenLength; index++) {
+      token[index] = ALLOWED_TOKEN_CHARACTERS.charAt(random.nextInt(NUM_ALLOWED_TOKEN_CHARACTERS));
+    }
+    return new String(token);
   }
 
   /**
@@ -137,7 +171,7 @@ public class SaltEngine {
       throw new FileNotFoundException(String.format("Unable to find the site control file %s", siteFile.toString()));
     }
 
-    Path parentPath = this.sitesFile.getAbsoluteFile().getParentFile().toPath();
+    Path parentPath = siteFile.getAbsoluteFile().getParentFile().toPath();
 
     try (BufferedReader csvReader = new BufferedReader(new FileReader(siteFile))) {
       CSVParser parser = CSVParser.parse(csvReader, CSVFormat.DEFAULT.withDelimiter(SITE_FILE_DELIMITER));

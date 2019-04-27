@@ -36,6 +36,9 @@ public class Site {
 
   public void setSiteID(String siteID) {
     this.siteID = siteID;
+    if (this.siteID != null) {
+      this.siteID = this.siteID.trim();
+    }
   }
 
   public String getSiteName() {
@@ -44,6 +47,9 @@ public class Site {
 
   public void setSiteName(String siteName) {
     this.siteName = siteName;
+    if (this.siteName != null) {
+      this.siteName = this.siteName.trim();
+    }
   }
 
   public File getPublicKeyFile() {

@@ -2,6 +2,7 @@ package org.linkja.saltengine;
 
 import org.apache.commons.cli.*;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.linkja.core.LinkjaException;
 
 import java.io.FileNotFoundException;
 import java.security.Security;
@@ -27,6 +28,9 @@ public class Runner {
       engine.setProjectName(cmd.getOptionValue("projectName"));
       engine.setSitesFile(cmd.getOptionValue("siteFile"));
     } catch (FileNotFoundException e) {
+      e.printStackTrace();
+      System.exit(1);
+    } catch (LinkjaException e) {
       e.printStackTrace();
       System.exit(1);
     }
