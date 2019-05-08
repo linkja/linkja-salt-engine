@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.linkja.core.CryptoHelper;
 import org.linkja.core.FileHelper;
 import org.linkja.core.LinkjaException;
+import org.linkja.core.Site;
 import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.FieldSetter;
 
@@ -148,6 +149,58 @@ class SaltEngineTest {
   }
 
   @Test
+  void setSiteId_NullEmpty() {
+    SaltEngine engine = new SaltEngine();
+    LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.setSiteId(null));
+    assertTrue(exception.getMessage().equals("You must set a site ID that is at least 1 non-whitespace character long"));
+
+    exception = assertThrows(LinkjaException.class, () -> engine.setSiteId(""));
+    assertTrue(exception.getMessage().equals("You must set a site ID that is at least 1 non-whitespace character long"));
+
+    exception = assertThrows(LinkjaException.class, () -> engine.setSiteId("  "));
+    assertTrue(exception.getMessage().equals("You must set a site ID that is at least 1 non-whitespace character long"));
+  }
+
+  @Test
+  void setSiteId_Valid() throws LinkjaException {
+    SaltEngine engine = new SaltEngine();
+    engine.setSiteId("a");
+    assertEquals("a", engine.getSiteId());
+    engine.setSiteId("a  ");
+    assertEquals("a", engine.getSiteId());
+    engine.setSiteId("  a");
+    assertEquals("a", engine.getSiteId());
+    engine.setSiteId("abcdefghijklmnopqrstuvwxyz 0123456789");
+    assertEquals("abcdefghijklmnopqrstuvwxyz 0123456789", engine.getSiteId());
+  }
+
+  @Test
+  void setSiteName_NullEmpty() {
+    SaltEngine engine = new SaltEngine();
+    LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.setSiteName(null));
+    assertTrue(exception.getMessage().equals("You must set a site name that is at least 1 non-whitespace character long"));
+
+    exception = assertThrows(LinkjaException.class, () -> engine.setSiteName(""));
+    assertTrue(exception.getMessage().equals("You must set a site name that is at least 1 non-whitespace character long"));
+
+    exception = assertThrows(LinkjaException.class, () -> engine.setSiteName("  "));
+    assertTrue(exception.getMessage().equals("You must set a site name that is at least 1 non-whitespace character long"));
+  }
+
+  @Test
+  void setSiteName_Valid() throws LinkjaException {
+    SaltEngine engine = new SaltEngine();
+    engine.setSiteName("a");
+    assertEquals("a", engine.getSiteName());
+    engine.setSiteName("a  ");
+    assertEquals("a", engine.getSiteName());
+    engine.setSiteName("  a");
+    assertEquals("a", engine.getSiteName());
+    engine.setSiteName("abcdefghijklmnopqrstuvwxyz 0123456789");
+    assertEquals("abcdefghijklmnopqrstuvwxyz 0123456789", engine.getSiteName());
+  }
+
+  @Test
   void generateToken_SizeViolation() {
     SaltEngine engine = new SaltEngine();
     LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.generateToken(-1));
@@ -200,55 +253,5 @@ class SaltEngineTest {
       assertFalse(tokens.contains(token));
       tokens.add(token);
     }
-  }
-
-  @Test
-  void getSaltFileName_NullEmpty() {
-    SaltEngine engine = new SaltEngine();
-    LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.getSaltFileName(null, "ok"));
-    assertTrue(exception.getMessage().equals("The project name cannot be empty"));
-    exception = assertThrows(LinkjaException.class, () -> engine.getSaltFileName("", "ok"));
-    assertTrue(exception.getMessage().equals("The project name cannot be empty"));
-    exception = assertThrows(LinkjaException.class, () -> engine.getSaltFileName("ok", null));
-    assertTrue(exception.getMessage().equals("The site ID cannot be empty"));
-    exception = assertThrows(LinkjaException.class, () -> engine.getSaltFileName("ok", ""));
-    assertTrue(exception.getMessage().equals("The site ID cannot be empty"));
-  }
-
-  @Test
-  void getSaltFileName_ValidParameters() throws LinkjaException {
-    SaltEngine engine = new SaltEngine();
-    assertTrue(engine.getSaltFileName("1", "2").startsWith("1_2_"));
-    assertTrue(engine.getSaltFileName("project1", "001").startsWith("project1_001_"));
-  }
-
-  @Test
-  void getSaltFileName_ReplaceCharacters() throws LinkjaException {
-    SaltEngine engine = new SaltEngine();
-    assertTrue(engine.getSaltFileName(" _ & 0zee ", "1 !!!").startsWith("_0zee_1_"));
-    //TODO - ideally we should make sure after stripping invalid characters we're left with something. Maybe in the future?
-    assertTrue(engine.getSaltFileName("*@()(#)$ ", " !!!").startsWith("__"));
-  }
-
-  @Test
-  void generateSaltFile() throws Exception {
-    ClassLoader classLoader = getClass().getClassLoader();
-    File publicKeyFile = new File(classLoader.getResource("public-key-1.pem").toURI());
-    File privateKeyFile = new File(classLoader.getResource("private-key-1.pem").toURI());
-    File testFile = File.createTempFile("test", ".txt");  // Gives us a known temp folder
-    testFile.deleteOnExit();
-
-    Site site = new Site("001", "Test Site", publicKeyFile);
-    Path rootPath = testFile.getParentFile().toPath();
-
-    SaltEngine engine = new SaltEngine();
-    engine.setProjectName("Test Project");
-    engine.generateSaltFile(site, "0123456789123", rootPath);
-    String saltFileName = engine.getSaltFileName(engine.getProjectName(), site.getSiteID());
-
-    CryptoHelper helper = new CryptoHelper();
-    String data = new String(helper.decryptRSA(Paths.get(rootPath.toString(), saltFileName).toFile(), privateKeyFile));
-    assertTrue(data.startsWith("001,Test Site,"));
-    assertTrue(data.endsWith(",Test Project"));
   }
 }

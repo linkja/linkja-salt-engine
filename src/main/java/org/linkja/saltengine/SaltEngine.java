@@ -3,9 +3,7 @@ package org.linkja.saltengine;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.linkja.core.CryptoHelper;
-import org.linkja.core.FileHelper;
-import org.linkja.core.LinkjaException;
+import org.linkja.core.*;
 
 import java.io.*;
 import java.net.URI;
@@ -34,8 +32,17 @@ public class SaltEngine {
   private static final String ALLOWED_TOKEN_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   private static final int NUM_ALLOWED_TOKEN_CHARACTERS = ALLOWED_TOKEN_CHARACTERS.length();
 
+  // Used for generating a new project
   private String projectName;
   private File sitesFile;
+
+  // Used for adding a site to an existing project
+  private String siteId;
+  private String siteName;
+  private File sitePublicKey;
+  private File privateKey;
+  private File saltFile;
+
   private FileHelper fileHelper;
   private CryptoHelper cryptoHelper = new CryptoHelper();
 
@@ -79,6 +86,78 @@ public class SaltEngine {
     setSitesFile(file);
   }
 
+  public String getSiteId() {
+    return siteId;
+  }
+
+  public void setSiteId(String siteId) throws LinkjaException {
+    if (siteId == null || siteId.trim().equals("")) {
+      throw new LinkjaException("You must set a site ID that is at least 1 non-whitespace character long");
+    }
+
+    this.siteId = siteId.trim();
+  }
+
+  public String getSiteName() {
+    return siteName;
+  }
+
+  public void setSiteName(String siteName) throws LinkjaException {
+    if (siteName == null || siteName.trim().equals("")) {
+      throw new LinkjaException("You must set a site name that is at least 1 non-whitespace character long");
+    }
+
+    this.siteName = siteName.trim();
+  }
+
+  public File getSitePublicKey() {
+    return sitePublicKey;
+  }
+
+  public void setSitePublicKey(File sitePublicKey) throws FileNotFoundException {
+    if (!fileHelper.exists(sitePublicKey)) {
+      throw new FileNotFoundException(String.format("Unable to find site public key file %s", sitePublicKey.toString()));
+    }
+    this.sitePublicKey = sitePublicKey;
+  }
+
+  public void setSitePublicKey(String sitePublicKey) throws FileNotFoundException {
+    File file = new File(sitePublicKey);
+    setSitePublicKey(file);
+  }
+
+  public File getPrivateKey() {
+    return privateKey;
+  }
+
+  public void setPrivateKey(File privateKey) throws FileNotFoundException {
+    if (!fileHelper.exists(privateKey)) {
+      throw new FileNotFoundException(String.format("Unable to find your private key file %s", privateKey.toString()));
+    }
+    this.privateKey = privateKey;
+  }
+
+  public void setPrivateKey(String privateKey) throws FileNotFoundException {
+    File file = new File(privateKey);
+    setPrivateKey(file);
+  }
+
+  public File getSaltFile() {
+    return saltFile;
+  }
+
+  public void setSaltFile(File saltFile) throws FileNotFoundException {
+    if (!fileHelper.exists(saltFile)) {
+      throw new FileNotFoundException(String.format("Unable to find your encrypted salt file %s", saltFile.toString()));
+    }
+    this.saltFile = saltFile;
+  }
+
+  public void setSaltFile(String setSaltFile) throws FileNotFoundException {
+    File file = new File(setSaltFile);
+    setSaltFile(file);
+  }
+
   /**
    * Generate the salts for the configured sites
    */
@@ -95,38 +174,22 @@ public class SaltEngine {
     String projectToken = generateToken();
     Path parentPath = parent.toPath();
     for (Site site : sites) {
-      generateSaltFile(site, projectToken, parentPath);
+      SaltFile file = new SaltFile();
+      file.setSite(site);
+      file.setPrivateSalt(generateToken());
+      file.setProjectSalt(projectToken);
+      file.setProjectName(this.projectName);
+      File encryptedSaltFile = Paths.get(parentPath.toString(), file.getSaltFileName(file.getProjectName(), site.getSiteID())).toFile();
+      file.encrypt(encryptedSaltFile, site.getPublicKeyFile());
     }
   }
 
-  public void generateSaltFile(Site site, String projectToken, Path outputPath) throws Exception {
-    String hashFileContent = String.format("%s,%s,%s,%s,%s",
-            site.getSiteID(), site.getSiteName(), generateToken(), projectToken, this.projectName);
-    String fileName = getSaltFileName(this.projectName, site.getSiteID());
-    Files.write(Paths.get(outputPath.toString(), fileName).toAbsolutePath(),
-            cryptoHelper.encryptRSA(hashFileContent.getBytes(), site.getPublicKeyFile()));
-  }
+  public void addSite() throws FileNotFoundException {
+    Site site = new Site();
+    site.setSiteID(this.getSiteId());
+    site.setSiteName(this.getSiteName());
+    site.setPublicKeyFile(this.getSitePublicKey());
 
-  /**
-   * Helper function to generate a valid salt file name (removing invalid characters), given a project name
-   * and a site ID
-   * @param project
-   * @param siteID
-   * @return
-   * @throws LinkjaException
-   */
-  public String getSaltFileName(String project, String siteID) throws LinkjaException {
-    if (siteID == null || siteID.equals("")) {
-      throw new LinkjaException("The site ID cannot be empty");
-    }
-    if (project == null || project.equals("")) {
-      throw new LinkjaException("The project name cannot be empty");
-    }
-
-    String fileName = String.format("%s_%s_%s.txt", project.replaceAll("[^\\w]", ""),
-            siteID.replaceAll("[^\\w]", ""),
-            LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
-    return fileName;
   }
 
   /**
