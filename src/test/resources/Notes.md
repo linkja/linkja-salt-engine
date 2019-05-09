@@ -20,6 +20,6 @@ do
   openssl genpkey -algorithm RSA -out private-key-$run.pem -pkeyopt rsa_keygen_bits:2048
   openssl rsa -in private-key-$run.pem -out private-key-$run.pem
   chmod go-r private-key-$run.pem
-  openssl rsa -pubout -in private-key-1.pem -out public-key-$run.pem
+  openssl rsa -pubout -in private-key-$run.pem -out public-key-$run.pem
 done
 ```

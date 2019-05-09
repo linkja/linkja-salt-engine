@@ -28,10 +28,10 @@ public class Runner {
     try {
       // Check to make sure the user specified appropriate command line parameters.
       boolean generateProject = cmd.hasOption("generateProject");
-      boolean addSite = cmd.hasOption("addSite");
+      boolean addSites = cmd.hasOption("addSites");
 
-      if ((generateProject && addSite) || (!generateProject && !addSite)) {
-        throw new LinkjaException("Please specify either --generateProject or --addSite");
+      if ((generateProject && addSites) || (!generateProject && !addSites)) {
+        throw new LinkjaException("Please specify either --generateProject or --addSites");
       }
 
       if (generateProject) {
@@ -40,12 +40,10 @@ public class Runner {
         engine.generate();
       }
       else {
-        engine.setSiteId(cmd.getOptionValue("siteID"));
-        engine.setSiteName(cmd.getOptionValue("siteName"));
-        engine.setSitePublicKey(cmd.getOptionValue("sitePublicKey"));
+        engine.setSitesFile(cmd.getOptionValue("siteFile"));
         engine.setPrivateKey(cmd.getOptionValue("privateKey"));
         engine.setSaltFile(cmd.getOptionValue("saltFile"));
-        engine.addSite();
+        engine.addSites();
       }
     }
     catch (Exception exc) {
@@ -72,32 +70,21 @@ public class Runner {
     generateProjectOpt.setRequired(false);
     options.addOption(generateProjectOpt);
 
-    Option addSiteOpt = new Option("add", "addSite", false, "Create a salt file for a new site in an existing project");
-    addSiteOpt.setRequired(false);
-    options.addOption(addSiteOpt);
+    Option addSitesOpt = new Option("add", "addSites", false, "Create a salt file for new sites in an existing project");
+    addSitesOpt.setRequired(false);
+    options.addOption(addSitesOpt);
+
+    // Parameters for either mode
+    Option siteFileOpt = new Option("sf", "siteFile", true, "Control file with the salts to load");
+    siteFileOpt.setRequired(true);
+    options.addOption(siteFileOpt);
 
     // Parameters for --generateProject
     Option projectNameOpt = new Option("pn", "projectName", true, "The name of the project to create");
     projectNameOpt.setRequired(false);
     options.addOption(projectNameOpt);
 
-    Option siteFileOpt = new Option("sf", "siteFile", true, "Control file with the salts to load");
-    siteFileOpt.setRequired(false);
-    options.addOption(siteFileOpt);
-
     // Parameters for --addSite
-    Option siteIdOpt = new Option("i", "siteID", true, "The ID of the new site");
-    siteIdOpt.setRequired(false);
-    options.addOption(siteIdOpt);
-
-    Option siteNameOpt = new Option("n", "siteID", true, "The ID of the new site");
-    siteNameOpt.setRequired(false);
-    options.addOption(siteNameOpt);
-
-    Option sitePublicKeyOpt = new Option("pub", "sitePublicKey", true, "The path to the public key file for the new site");
-    sitePublicKeyOpt.setRequired(false);
-    options.addOption(sitePublicKeyOpt);
-
     Option privateKeyOpt = new Option("prv", "privateKey", true, "The path to your private key file for the existing project");
     privateKeyOpt.setRequired(false);
     options.addOption(privateKeyOpt);
@@ -136,20 +123,18 @@ public class Runner {
    */
   public static void displayUsage() {
     System.out.println();
-    System.out.println("Usage: java -jar SaltEngine.jar [--generateProject | --addSite]");
+    System.out.println("Usage: java -jar SaltEngine.jar [--generateProject | --addSites]");
     System.out.println();
     System.out.println("GENERATE PROJECT");
     System.out.println("-------------");
     System.out.println("Required parameters:");
-    System.out.println("  -pn,--projectName <arg>           The name of the project to create");
     System.out.println("  -sf,--siteFile <arg>              The path to a file containing the site definitions");
+    System.out.println("  -pn,--projectName <arg>           The name of the project to create");
     System.out.println();
-    System.out.println("ADD SITE");
+    System.out.println("ADD SITES");
     System.out.println("-------------");
     System.out.println("Required parameters:");
-    System.out.println("  -i,--siteID <arg>                 The ID of the new site");
-    System.out.println("  -n,--siteName <arg>               The name of the new site");
-    System.out.println("  -pub,--sitePublicKey <arg>        The path to the public key file for the new site");
+    System.out.println("  -sf,--siteFile <arg>              The path to a file containing the site definitions");
     System.out.println("  -prv,--privateKey <arg>           The path to your private key file for the existing project");
     System.out.println("  -salt,--saltFile <arg>            The path to your encrypted salt file for the existing project");
   }

@@ -149,58 +149,6 @@ class SaltEngineTest {
   }
 
   @Test
-  void setSiteId_NullEmpty() {
-    SaltEngine engine = new SaltEngine();
-    LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.setSiteId(null));
-    assertTrue(exception.getMessage().equals("You must set a site ID that is at least 1 non-whitespace character long"));
-
-    exception = assertThrows(LinkjaException.class, () -> engine.setSiteId(""));
-    assertTrue(exception.getMessage().equals("You must set a site ID that is at least 1 non-whitespace character long"));
-
-    exception = assertThrows(LinkjaException.class, () -> engine.setSiteId("  "));
-    assertTrue(exception.getMessage().equals("You must set a site ID that is at least 1 non-whitespace character long"));
-  }
-
-  @Test
-  void setSiteId_Valid() throws LinkjaException {
-    SaltEngine engine = new SaltEngine();
-    engine.setSiteId("a");
-    assertEquals("a", engine.getSiteId());
-    engine.setSiteId("a  ");
-    assertEquals("a", engine.getSiteId());
-    engine.setSiteId("  a");
-    assertEquals("a", engine.getSiteId());
-    engine.setSiteId("abcdefghijklmnopqrstuvwxyz 0123456789");
-    assertEquals("abcdefghijklmnopqrstuvwxyz 0123456789", engine.getSiteId());
-  }
-
-  @Test
-  void setSiteName_NullEmpty() {
-    SaltEngine engine = new SaltEngine();
-    LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.setSiteName(null));
-    assertTrue(exception.getMessage().equals("You must set a site name that is at least 1 non-whitespace character long"));
-
-    exception = assertThrows(LinkjaException.class, () -> engine.setSiteName(""));
-    assertTrue(exception.getMessage().equals("You must set a site name that is at least 1 non-whitespace character long"));
-
-    exception = assertThrows(LinkjaException.class, () -> engine.setSiteName("  "));
-    assertTrue(exception.getMessage().equals("You must set a site name that is at least 1 non-whitespace character long"));
-  }
-
-  @Test
-  void setSiteName_Valid() throws LinkjaException {
-    SaltEngine engine = new SaltEngine();
-    engine.setSiteName("a");
-    assertEquals("a", engine.getSiteName());
-    engine.setSiteName("a  ");
-    assertEquals("a", engine.getSiteName());
-    engine.setSiteName("  a");
-    assertEquals("a", engine.getSiteName());
-    engine.setSiteName("abcdefghijklmnopqrstuvwxyz 0123456789");
-    assertEquals("abcdefghijklmnopqrstuvwxyz 0123456789", engine.getSiteName());
-  }
-
-  @Test
   void generateToken_SizeViolation() {
     SaltEngine engine = new SaltEngine();
     LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.generateToken(-1));
