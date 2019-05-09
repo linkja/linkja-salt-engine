@@ -24,22 +24,32 @@ public class Runner {
     Security.addProvider(new BouncyCastleProvider());
 
     SaltEngine engine = new SaltEngine();
-    try {
-      engine.setProjectName(cmd.getOptionValue("projectName"));
-      engine.setSitesFile(cmd.getOptionValue("siteFile"));
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-      System.exit(1);
-    } catch (LinkjaException e) {
-      e.printStackTrace();
-      System.exit(1);
-    }
 
     try {
-      engine.generate();
+      // Check to make sure the user specified appropriate command line parameters.
+      boolean generateProject = cmd.hasOption("generateProject");
+      boolean addSites = cmd.hasOption("addSites");
+
+      if ((generateProject && addSites) || (!generateProject && !addSites)) {
+        throw new LinkjaException("Please specify either --generateProject or --addSites");
+      }
+
+      if (generateProject) {
+        engine.setProjectName(cmd.getOptionValue("projectName"));
+        engine.setSitesFile(cmd.getOptionValue("siteFile"));
+        engine.generate();
+      }
+      else {
+        engine.setSitesFile(cmd.getOptionValue("siteFile"));
+        engine.setPrivateKey(cmd.getOptionValue("privateKey"));
+        engine.setSaltFile(cmd.getOptionValue("saltFile"));
+        engine.addSites();
+      }
     }
-    catch (Exception e) {
-      e.printStackTrace();
+    catch (Exception exc) {
+      displayUsage();
+      System.out.println();
+      System.out.println(exc.getMessage());
       System.exit(1);
     }
 
@@ -56,13 +66,32 @@ public class Runner {
   public static Options setUpCommandLine() {
     Options options = new Options();
 
-    Option projectNameOpt = new Option("pn", "projectName", true, "The name of the project to create");
-    projectNameOpt.setRequired(true);
-    options.addOption(projectNameOpt);
+    Option generateProjectOpt = new Option("gen", "generateProject", false, "Create a new set of salt files for sites in a project");
+    generateProjectOpt.setRequired(false);
+    options.addOption(generateProjectOpt);
 
+    Option addSitesOpt = new Option("add", "addSites", false, "Create a salt file for new sites in an existing project");
+    addSitesOpt.setRequired(false);
+    options.addOption(addSitesOpt);
+
+    // Parameters for either mode
     Option siteFileOpt = new Option("sf", "siteFile", true, "Control file with the salts to load");
     siteFileOpt.setRequired(true);
     options.addOption(siteFileOpt);
+
+    // Parameters for --generateProject
+    Option projectNameOpt = new Option("pn", "projectName", true, "The name of the project to create");
+    projectNameOpt.setRequired(false);
+    options.addOption(projectNameOpt);
+
+    // Parameters for --addSite
+    Option privateKeyOpt = new Option("prv", "privateKey", true, "The path to your private key file for the existing project");
+    privateKeyOpt.setRequired(false);
+    options.addOption(privateKeyOpt);
+
+    Option saltFileOpt = new Option("salt", "saltFile", true, "The path to your encrypted salt file for the existing project");
+    saltFileOpt.setRequired(false);
+    options.addOption(saltFileOpt);
 
     return options;
   }
@@ -94,10 +123,19 @@ public class Runner {
    */
   public static void displayUsage() {
     System.out.println();
-    System.out.println("Usage: java -jar SaltEngine.jar");
+    System.out.println("Usage: java -jar SaltEngine.jar [--generateProject | --addSites]");
     System.out.println();
+    System.out.println("GENERATE PROJECT");
+    System.out.println("-------------");
     System.out.println("Required parameters:");
-    System.out.println("  -pn,--projectName <arg>           The name of the project to create");
     System.out.println("  -sf,--siteFile <arg>              The path to a file containing the site definitions");
+    System.out.println("  -pn,--projectName <arg>           The name of the project to create");
+    System.out.println();
+    System.out.println("ADD SITES");
+    System.out.println("-------------");
+    System.out.println("Required parameters:");
+    System.out.println("  -sf,--siteFile <arg>              The path to a file containing the site definitions");
+    System.out.println("  -prv,--privateKey <arg>           The path to your private key file for the existing project");
+    System.out.println("  -salt,--saltFile <arg>            The path to your encrypted salt file for the existing project");
   }
 }

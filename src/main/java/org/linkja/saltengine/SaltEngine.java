@@ -3,9 +3,7 @@ package org.linkja.saltengine;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.linkja.core.CryptoHelper;
-import org.linkja.core.FileHelper;
-import org.linkja.core.LinkjaException;
+import org.linkja.core.*;
 
 import java.io.*;
 import java.net.URI;
@@ -34,10 +32,18 @@ public class SaltEngine {
   private static final String ALLOWED_TOKEN_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   private static final int NUM_ALLOWED_TOKEN_CHARACTERS = ALLOWED_TOKEN_CHARACTERS.length();
 
-  private String projectName;
+  // Used across all modes
   private File sitesFile;
+
+  // Used for generating a new project
+  private String projectName;
+
+  // Used for adding sites to an existing project
+  private File privateKey;
+  private File saltFile;
+
   private FileHelper fileHelper;
-  private CryptoHelper cryptoHelper = new CryptoHelper();
+  //private CryptoHelper cryptoHelper = new CryptoHelper();
 
   public SaltEngine() {
     fileHelper = new FileHelper();
@@ -79,10 +85,82 @@ public class SaltEngine {
     setSitesFile(file);
   }
 
+  public File getPrivateKey() {
+    return privateKey;
+  }
+
+  public void setPrivateKey(File privateKey) throws FileNotFoundException {
+    if (!fileHelper.exists(privateKey)) {
+      throw new FileNotFoundException(String.format("Unable to find your private key file %s", privateKey.toString()));
+    }
+    this.privateKey = privateKey;
+  }
+
+  public void setPrivateKey(String privateKey) throws FileNotFoundException {
+    File file = new File(privateKey);
+    setPrivateKey(file);
+  }
+
+  public File getSaltFile() {
+    return saltFile;
+  }
+
+  public void setSaltFile(File saltFile) throws FileNotFoundException {
+    if (!fileHelper.exists(saltFile)) {
+      throw new FileNotFoundException(String.format("Unable to find your encrypted salt file %s", saltFile.toString()));
+    }
+    this.saltFile = saltFile;
+  }
+
+  public void setSaltFile(String setSaltFile) throws FileNotFoundException {
+    File file = new File(setSaltFile);
+    setSaltFile(file);
+  }
+
   /**
    * Generate the salts for the configured sites
    */
   public void generate() throws Exception {
+    Path parentPath = getSiteFileParentPath();
+    List<Site> sites = loadSites(this.sitesFile);
+    validateSites(sites);
+    String projectToken = generateToken();
+    for (Site site : sites) {
+      generateSaltFile(site, generateToken(), projectToken, this.projectName, parentPath);
+    }
+  }
+
+  public void addSites() throws Exception {
+    Path parentPath = getSiteFileParentPath();
+    List<Site> sites = loadSites(this.sitesFile);
+    validateSites(sites);
+
+    SaltFile existingFile = new SaltFile();
+    existingFile.decrypt(this.saltFile, this.privateKey);
+    String projectToken = existingFile.getProjectSalt();
+    String projectName = existingFile.getProjectName();
+
+    for (Site site : sites) {
+      generateSaltFile(site, generateToken(), projectToken, projectName, parentPath);
+    }
+  }
+
+  private void generateSaltFile(Site site, String privateToken, String projectToken, String projectName, Path parentPath) throws Exception {
+    SaltFile file = new SaltFile();
+    file.setSite(site);
+    file.setPrivateSalt(privateToken);
+    file.setProjectSalt(projectToken);
+    file.setProjectName(projectName);
+    File encryptedSaltFile = Paths.get(parentPath.toString(), file.getSaltFileName(file.getProjectName(), site.getSiteID())).toFile();
+    file.encrypt(encryptedSaltFile, site.getPublicKeyFile());
+  }
+
+  /**
+   * Utility method to return the parent path where the specified site file is located
+   * @return
+   * @throws LinkjaException
+   */
+  private Path getSiteFileParentPath() throws LinkjaException {
     // Get the directory where the configuration file was specified.  That is going to be our directory for the
     // generated results.
     File parent = this.sitesFile.getAbsoluteFile().getParentFile();
@@ -90,43 +168,7 @@ public class SaltEngine {
       throw new LinkjaException("Unexpected error with the directory containing the sites configuration file");
     }
 
-    List<Site> sites = loadSites(this.sitesFile);
-    validateSites(sites);
-    String projectToken = generateToken();
-    Path parentPath = parent.toPath();
-    for (Site site : sites) {
-      generateSaltFile(site, projectToken, parentPath);
-    }
-  }
-
-  public void generateSaltFile(Site site, String projectToken, Path outputPath) throws Exception {
-    String hashFileContent = String.format("%s,%s,%s,%s,%s",
-            site.getSiteID(), site.getSiteName(), generateToken(), projectToken, this.projectName);
-    String fileName = getSaltFileName(this.projectName, site.getSiteID());
-    Files.write(Paths.get(outputPath.toString(), fileName).toAbsolutePath(),
-            cryptoHelper.encryptRSA(hashFileContent.getBytes(), site.getPublicKeyFile()));
-  }
-
-  /**
-   * Helper function to generate a valid salt file name (removing invalid characters), given a project name
-   * and a site ID
-   * @param project
-   * @param siteID
-   * @return
-   * @throws LinkjaException
-   */
-  public String getSaltFileName(String project, String siteID) throws LinkjaException {
-    if (siteID == null || siteID.equals("")) {
-      throw new LinkjaException("The site ID cannot be empty");
-    }
-    if (project == null || project.equals("")) {
-      throw new LinkjaException("The project name cannot be empty");
-    }
-
-    String fileName = String.format("%s_%s_%s.txt", project.replaceAll("[^\\w]", ""),
-            siteID.replaceAll("[^\\w]", ""),
-            LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
-    return fileName;
+    return parent.toPath();
   }
 
   /**
