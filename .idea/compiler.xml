@@ -6,11 +6,11 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="salt-engine" />
+        <module name="linkja-salt-engine" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="salt-engine" target="1.8" />
+      <module name="linkja-salt-engine" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>
