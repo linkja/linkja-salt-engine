@@ -151,15 +151,15 @@ class SaltEngineTest {
   void generateToken_DefaultLength() throws LinkjaException {
     SaltEngine engine = new SaltEngine();
     String token = engine.generateToken();
-    assertEquals(44, token.length());
+    assertEquals(SaltEngine.DEFAULT_TOKEN_LENGTH * 2, token.length());
   }
 
   @Test
   void generateToken_NonDefaultLength() throws LinkjaException {
     SaltEngine engine = new SaltEngine();
-    // Note that the expected length is from the base64 4*(n/3) formula (rounded up to nearest multiple of 4)
-    assertEquals(52,  engine.generateToken(37).length());
-    assertEquals(136,  engine.generateToken(101).length());
+    // Note that the expected length is 2x the input length
+    assertEquals(74,  engine.generateToken(37).length());
+    assertEquals(202,  engine.generateToken(101).length());
   }
 
   @Test

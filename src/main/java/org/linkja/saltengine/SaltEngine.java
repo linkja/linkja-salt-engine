@@ -4,12 +4,11 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.linkja.core.*;
+import org.linkja.crypto.Library;
 
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
 import java.util.*;
 
 public class SaltEngine {
@@ -164,10 +163,7 @@ public class SaltEngine {
               MINIMUM_TOKEN_LENGTH, MAXIMUM_TOKEN_LENGTH, tokenLength));
     }
 
-    byte[] randomBytes = new byte[tokenLength];
-    SecureRandom random = new SecureRandom();
-    random.nextBytes(randomBytes);
-    return Base64.getEncoder().encodeToString(randomBytes);
+    return Library.generateToken(tokenLength);
   }
 
   /**
