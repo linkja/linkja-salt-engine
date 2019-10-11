@@ -1,11 +1,7 @@
 package org.linkja.saltengine;
 
 import org.apache.commons.cli.*;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.linkja.core.LinkjaException;
-
-import java.io.FileNotFoundException;
-import java.security.Security;
 
 public class Runner {
   public static void main(String[] args) {
@@ -18,10 +14,12 @@ public class Runner {
       System.exit(1);
     }
 
-    long startTime = System.nanoTime();
+    if (cmd.hasOption("version")) {
+      displayVersion();
+      System.exit(0);
+    }
 
-    // Perform some initialization - purposefully done after timing has started.
-    Security.addProvider(new BouncyCastleProvider());
+    long startTime = System.nanoTime();
 
     SaltEngine engine = new SaltEngine();
 
@@ -41,7 +39,6 @@ public class Runner {
       }
       else {
         engine.setSitesFile(cmd.getOptionValue("siteFile"));
-        engine.setPrivateKey(cmd.getOptionValue("privateKey"));
         engine.setSaltFile(cmd.getOptionValue("saltFile"));
         engine.addSites();
       }
@@ -59,12 +56,21 @@ public class Runner {
     System.out.printf("Total execution time: %2f sec\n", elapsedSeconds);
   }
 
+  public static void displayVersion() {
+    System.out.printf("linkja-salt-engine v%s\r\n", Runner.class.getPackage().getImplementationVersion());
+    System.out.printf("linkja-crypto signature: %s\r\n", (new org.linkja.crypto.Library()).getLibrarySignature());
+  }
+
   /**
    * Helper method to prepare our command line options
    * @return Collection of options to be used at the command line
    */
   public static Options setUpCommandLine() {
     Options options = new Options();
+
+    Option versionOpt = new Option("v", "version", false, "Display the version of this program");
+    versionOpt.setRequired(false);
+    options.addOption(versionOpt);
 
     Option generateProjectOpt = new Option("gen", "generateProject", false, "Create a new set of salt files for sites in a project");
     generateProjectOpt.setRequired(false);
@@ -76,7 +82,7 @@ public class Runner {
 
     // Parameters for either mode
     Option siteFileOpt = new Option("sf", "siteFile", true, "Control file with the salts to load");
-    siteFileOpt.setRequired(true);
+    siteFileOpt.setRequired(false);
     options.addOption(siteFileOpt);
 
     // Parameters for --generateProject
@@ -85,10 +91,6 @@ public class Runner {
     options.addOption(projectNameOpt);
 
     // Parameters for --addSite
-    Option privateKeyOpt = new Option("prv", "privateKey", true, "The path to your private key file for the existing project");
-    privateKeyOpt.setRequired(false);
-    options.addOption(privateKeyOpt);
-
     Option saltFileOpt = new Option("salt", "saltFile", true, "The path to your encrypted salt file for the existing project");
     saltFileOpt.setRequired(false);
     options.addOption(saltFileOpt);
@@ -123,7 +125,7 @@ public class Runner {
    */
   public static void displayUsage() {
     System.out.println();
-    System.out.println("Usage: java -jar SaltEngine.jar [--generateProject | --addSites]");
+    System.out.println("Usage: java -jar SaltEngine.jar [--generateProject | --addSites | --version]");
     System.out.println();
     System.out.println("GENERATE PROJECT");
     System.out.println("-------------");
@@ -135,7 +137,6 @@ public class Runner {
     System.out.println("-------------");
     System.out.println("Required parameters:");
     System.out.println("  -sf,--siteFile <arg>              The path to a file containing the site definitions");
-    System.out.println("  -prv,--privateKey <arg>           The path to your private key file for the existing project");
     System.out.println("  -salt,--saltFile <arg>            The path to your encrypted salt file for the existing project");
   }
 }
