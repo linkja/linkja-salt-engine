@@ -87,8 +87,8 @@ class SaltEngineTest {
     FileHelper fileHelperMock = Mockito.mock(FileHelper.class);
     Mockito.when(fileHelperMock.exists(Mockito.any(File.class))).thenAnswer(invoke -> true);
     ArrayList<Site> sites = new ArrayList<Site>() {{
-      add(new Site("1", "Test 1", new File("Test1.key"), fileHelperMock));
-      add(new Site("1", "Test 2", new File("Test2.key"), fileHelperMock));
+      add(new Site("1", "Test 1"));
+      add(new Site("1", "Test 2"));
     }};
     SaltEngine engine = new SaltEngine(fileHelperMock);
     LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.validateSites(sites));
@@ -100,26 +100,12 @@ class SaltEngineTest {
     FileHelper fileHelperMock = Mockito.mock(FileHelper.class);
     Mockito.when(fileHelperMock.exists(Mockito.any(File.class))).thenAnswer(invoke -> true);
     ArrayList<Site> sites = new ArrayList<Site>() {{
-      add(new Site("1", "Test", new File("Test1.key"), fileHelperMock));
-      add(new Site("2", "Test", new File("Test2.key"), fileHelperMock));
+      add(new Site("1", "Test"));
+      add(new Site("2", "Test"));
     }};
     SaltEngine engine = new SaltEngine(fileHelperMock);
     LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.validateSites(sites));
     assertEquals("Site names must be unique, but 'Test' was found more than once.", exception.getMessage());
-  }
-
-  @Test
-  void validateSites_DuplicateKeyFile() throws NoSuchFieldException, FileNotFoundException {
-    FileHelper fileHelperMock = Mockito.mock(FileHelper.class);
-    Mockito.when(fileHelperMock.exists(Mockito.any(File.class))).thenAnswer(invoke -> true);
-    ArrayList<Site> sites = new ArrayList<Site>() {{
-      add(new Site("1", "Test 1", new File("Test1.key"), fileHelperMock));
-      add(new Site("2", "Test 2", new File("Test1.key"), fileHelperMock));
-    }};
-    SaltEngine engine = new SaltEngine(fileHelperMock);
-    LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.validateSites(sites));
-    assertTrue(exception.getMessage().contains("Public keys for each site must be unique"));
-    assertTrue(exception.getMessage().contains("Test1.key"));
   }
 
   @Test
@@ -152,27 +138,28 @@ class SaltEngineTest {
   void generateToken_SizeViolation() {
     SaltEngine engine = new SaltEngine();
     LinkjaException exception = assertThrows(LinkjaException.class, () -> engine.generateToken(-1));
-    assertTrue(exception.getMessage().equals("The token must be between 13 and 20 characters, but -1 were requested."));
+    assertTrue(exception.getMessage().equals("The token must be between 32 and 1024 characters, but -1 were requested."));
 
     exception = assertThrows(LinkjaException.class, () -> engine.generateToken(SaltEngine.MINIMUM_TOKEN_LENGTH - 1));
-    assertTrue(exception.getMessage().equals("The token must be between 13 and 20 characters, but 12 were requested."));
+    assertTrue(exception.getMessage().equals("The token must be between 32 and 1024 characters, but 31 were requested."));
 
     exception = assertThrows(LinkjaException.class, () -> engine.generateToken(SaltEngine.MAXIMUM_TOKEN_LENGTH + 1));
-    assertTrue(exception.getMessage().equals("The token must be between 13 and 20 characters, but 21 were requested."));
+    assertTrue(exception.getMessage().equals("The token must be between 32 and 1024 characters, but 1025 were requested."));
   }
 
   @Test
   void generateToken_DefaultLength() throws LinkjaException {
     SaltEngine engine = new SaltEngine();
     String token = engine.generateToken();
-    assertEquals(SaltEngine.DEFAULT_TOKEN_LENGTH, token.length());
+    assertEquals(44, token.length());
   }
 
   @Test
   void generateToken_NonDefaultLength() throws LinkjaException {
     SaltEngine engine = new SaltEngine();
-    assertEquals(15,  engine.generateToken(15).length());
-    assertEquals(19,  engine.generateToken(19).length());
+    // Note that the expected length is from the base64 4*(n/3) formula (rounded up to nearest multiple of 4)
+    assertEquals(52,  engine.generateToken(37).length());
+    assertEquals(136,  engine.generateToken(101).length());
   }
 
   @Test
