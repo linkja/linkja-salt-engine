@@ -4,33 +4,24 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.linkja.core.*;
+import org.linkja.crypto.Library;
 
 import java.io.*;
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.PublicKey;
-import java.security.SecureRandom;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class SaltEngine {
   public static final char SITE_FILE_DELIMITER = ',';
-  public static final int SITE_FILE_COLUMN_COUNT = 3;
+  public static final int SITE_FILE_COLUMN_COUNT = 2;
 
-  public static final int MINIMUM_TOKEN_LENGTH = 13;
+  public static final int MINIMUM_TOKEN_LENGTH = 32;
   public static final int DEFAULT_TOKEN_LENGTH = MINIMUM_TOKEN_LENGTH;
-  public static final int MAXIMUM_TOKEN_LENGTH = 20;
+  public static final int MAXIMUM_TOKEN_LENGTH = 1024;
 
   // Location of fields in the sites CSV file
   public static final int SITE_ID_INDEX = 0;
   public static final int SITE_NAME_INDEX = 1;
-  public static final int SITE_KEY_FILE_INDEX = 2;
-
-  private static final String ALLOWED_TOKEN_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  private static final int NUM_ALLOWED_TOKEN_CHARACTERS = ALLOWED_TOKEN_CHARACTERS.length();
 
   // Used across all modes
   private File sitesFile;
@@ -39,11 +30,9 @@ public class SaltEngine {
   private String projectName;
 
   // Used for adding sites to an existing project
-  private File privateKey;
   private File saltFile;
 
   private FileHelper fileHelper;
-  //private CryptoHelper cryptoHelper = new CryptoHelper();
 
   public SaltEngine() {
     fileHelper = new FileHelper();
@@ -85,29 +74,13 @@ public class SaltEngine {
     setSitesFile(file);
   }
 
-  public File getPrivateKey() {
-    return privateKey;
-  }
-
-  public void setPrivateKey(File privateKey) throws FileNotFoundException {
-    if (!fileHelper.exists(privateKey)) {
-      throw new FileNotFoundException(String.format("Unable to find your private key file %s", privateKey.toString()));
-    }
-    this.privateKey = privateKey;
-  }
-
-  public void setPrivateKey(String privateKey) throws FileNotFoundException {
-    File file = new File(privateKey);
-    setPrivateKey(file);
-  }
-
   public File getSaltFile() {
     return saltFile;
   }
 
   public void setSaltFile(File saltFile) throws FileNotFoundException {
     if (!fileHelper.exists(saltFile)) {
-      throw new FileNotFoundException(String.format("Unable to find your encrypted salt file %s", saltFile.toString()));
+      throw new FileNotFoundException(String.format("Unable to find your salt file %s", saltFile.toString()));
     }
     this.saltFile = saltFile;
   }
@@ -136,7 +109,7 @@ public class SaltEngine {
     validateSites(sites);
 
     SaltFile existingFile = new SaltFile();
-    existingFile.decrypt(this.saltFile, this.privateKey);
+    existingFile.load(this.saltFile);
     String projectToken = existingFile.getProjectSalt();
     String projectName = existingFile.getProjectName();
 
@@ -151,8 +124,6 @@ public class SaltEngine {
     file.setPrivateSalt(privateToken);
     file.setProjectSalt(projectToken);
     file.setProjectName(projectName);
-    File encryptedSaltFile = Paths.get(parentPath.toString(), file.getSaltFileName(file.getProjectName(), site.getSiteID())).toFile();
-    file.encrypt(encryptedSaltFile, site.getPublicKeyFile());
   }
 
   /**
@@ -177,7 +148,7 @@ public class SaltEngine {
    * @throws LinkjaException
    */
   public String generateToken() throws LinkjaException {
-    return generateToken(MINIMUM_TOKEN_LENGTH);
+    return generateToken(DEFAULT_TOKEN_LENGTH);
   }
 
   /**
@@ -192,12 +163,7 @@ public class SaltEngine {
               MINIMUM_TOKEN_LENGTH, MAXIMUM_TOKEN_LENGTH, tokenLength));
     }
 
-    SecureRandom random = new SecureRandom();
-    char token[] = new char[tokenLength];
-    for (int index = 0; index < tokenLength; index++) {
-      token[index] = ALLOWED_TOKEN_CHARACTERS.charAt(random.nextInt(NUM_ALLOWED_TOKEN_CHARACTERS));
-    }
-    return new String(token);
+    return Library.generateToken(tokenLength);
   }
 
   /**
@@ -213,21 +179,23 @@ public class SaltEngine {
       throw new FileNotFoundException(String.format("Unable to find the site control file %s", siteFile.toString()));
     }
 
-    Path parentPath = siteFile.getAbsoluteFile().getParentFile().toPath();
-
     try (BufferedReader csvReader = new BufferedReader(new FileReader(siteFile))) {
       CSVParser parser = CSVParser.parse(csvReader, CSVFormat.DEFAULT.withDelimiter(SITE_FILE_DELIMITER));
       for (CSVRecord csvRecord : parser) {
         if (csvRecord.size() != SITE_FILE_COLUMN_COUNT) {
-          throw new LinkjaException(String.format("Row %d has %d columns.  The site control file must have exactly %d columns on each row: Site ID, Site Name, Public Key",
+          throw new LinkjaException(String.format("Row %d has %d columns.  The site control file must have exactly %d columns on each row: Site ID, Site Name",
                   csvRecord.getRecordNumber(), csvRecord.size(), SITE_FILE_COLUMN_COUNT));
         }
 
-        File keyFile = new File(csvRecord.get(SITE_KEY_FILE_INDEX));
-        if (!keyFile.isAbsolute()) {
-          keyFile = Paths.get(parentPath.toAbsolutePath().toString(), keyFile.getPath()).toFile();
+        Site site = new Site(csvRecord.get(SITE_ID_INDEX), csvRecord.get(SITE_NAME_INDEX));
+        if (site.getSiteID().equals("")) {
+          throw new LinkjaException(String.format("Row %d a blank site ID, which is not allowed.",
+            csvRecord.getRecordNumber()));
         }
-        Site site = new Site(csvRecord.get(SITE_ID_INDEX), csvRecord.get(SITE_NAME_INDEX), keyFile, this.fileHelper);
+        if (site.getSiteName().equals("")) {
+          throw new LinkjaException(String.format("Row %d a blank site name, which is not allowed.",
+            csvRecord.getRecordNumber()));
+        }
         sites.add(site);
       }
     } catch (IOException e) {
@@ -262,13 +230,6 @@ public class SaltEngine {
         throw new LinkjaException(String.format("Site names must be unique, but '%s' was found more than once.", site.getSiteName()));
       }
       names.add(site.getSiteName());
-
-
-      URI publicKeyURI = site.getPublicKeyFile().toURI();
-      if (keyFiles.contains(publicKeyURI)) {
-        throw new LinkjaException(String.format("Public keys for each site must be unique, but '%s' was used more than once.", publicKeyURI));
-      }
-      keyFiles.add(publicKeyURI);
     }
   }
 }

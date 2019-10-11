@@ -6,7 +6,7 @@
 
     <groupId>org.linkja</groupId>
     <artifactId>SaltEngine</artifactId>
-    <version>0.1</version>
+    <version>0.2</version>
 
     <properties>
         <main.runnable.class>org.linkja.saltengine.Runner</main.runnable.class>
@@ -20,7 +20,6 @@
         <maven.surefire.version>2.22.1</maven.surefire.version>
         <commons.csv.version>1.6</commons.csv.version>
         <json.version>20180813</json.version>
-        <bouncycastle.version>1.61</bouncycastle.version>
     </properties>
 
 
@@ -78,21 +77,15 @@
             <artifactId>commons-lang</artifactId>
             <version>2.5</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>${bouncycastle.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
-            <version>${bouncycastle.version}</version>
-        </dependency>
         <dependency>
             <groupId>org.linkja</groupId>
             <artifactId>linkja-core</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.linkja</groupId>
+            <artifactId>linkja-crypto</artifactId>
+            <version>0.0.1</version>
         </dependency>
     </dependencies>
 
@@ -102,6 +95,10 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.version}</version>
+                <configuration>
+                    <!-- Specify the library path to include the liblinkjacrypto library -->
+                    <argLine>-Djava.library.path=./lib</argLine>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
