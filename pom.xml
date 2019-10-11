@@ -6,7 +6,7 @@
 
     <groupId>org.linkja</groupId>
     <artifactId>SaltEngine</artifactId>
-    <version>0.1</version>
+    <version>0.2</version>
 
     <properties>
         <main.runnable.class>org.linkja.saltengine.Runner</main.runnable.class>
@@ -80,7 +80,7 @@
         <dependency>
             <groupId>org.linkja</groupId>
             <artifactId>linkja-core</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
         </dependency>
         <dependency>
             <groupId>org.linkja</groupId>
@@ -95,6 +95,10 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.version}</version>
+                <configuration>
+                    <!-- Specify the library path to include the liblinkjacrypto library -->
+                    <argLine>-Djava.library.path=./lib</argLine>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
