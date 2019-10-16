@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/salt-engine.iml" filepath="$PROJECT_DIR$/.idea/salt-engine.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/linkja-salt-engine.iml" filepath="$PROJECT_DIR$/.idea/linkja-salt-engine.iml" />
     </modules>
   </component>
 </project>

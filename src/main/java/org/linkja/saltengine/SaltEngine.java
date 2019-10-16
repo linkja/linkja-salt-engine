@@ -9,6 +9,7 @@ import org.linkja.crypto.Library;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class SaltEngine {
@@ -124,6 +125,9 @@ public class SaltEngine {
     file.setPrivateSalt(privateToken);
     file.setProjectSalt(projectToken);
     file.setProjectName(projectName);
+
+    File encryptedSaltFile = Paths.get(parentPath.toString(), file.getSaltFileName(file.getProjectName(), site.getSiteID())).toFile();
+    file.save(encryptedSaltFile);
   }
 
   /**

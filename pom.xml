@@ -6,7 +6,7 @@
 
     <groupId>org.linkja</groupId>
     <artifactId>SaltEngine</artifactId>
-    <version>0.2</version>
+    <version>0.3</version>
 
     <properties>
         <main.runnable.class>org.linkja.saltengine.Runner</main.runnable.class>
@@ -80,7 +80,7 @@
         <dependency>
             <groupId>org.linkja</groupId>
             <artifactId>linkja-core</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
         </dependency>
         <dependency>
             <groupId>org.linkja</groupId>
