@@ -1,7 +1,5 @@
 # linkja-salt-engine
 
-Anticipated Date: 05/03/2019
-
 ## Building
 linkja-salt-engine was built using Java JDK 10 (specifically [OpenJDK](https://openjdk.java.net/)).  It can be opened from within an IDE like Eclipse or IntelliJ IDEA and compiled, or compiled from the command line using [Maven](https://maven.apache.org/).
 
@@ -24,7 +22,7 @@ For hashing, linkja-salt-engine uses a special C library (.dll/.dylib/.so, depen
 Exception in thread "main" java.lang.UnsatisfiedLinkError: no linkjacrypto in java.library.path:
 ```
 
-The library may be placed in any directory found by the Java library path.  If you would like to specify the library, you can include the `-Djava.library.path=` option when running the program.
+A redistributable version of the library is provided in this repository under the `lib` folder.  The library may be placed in any directory found by the Java library path.  If you would like to specify the library, you can include the `-Djava.library.path=` option when running the program.
 This can be the same directory as the linkja-salt-engine JAR file (e.g., `-Djava.library.path=.`).
 
 If you specify `--version`, the program will display the application version.  
